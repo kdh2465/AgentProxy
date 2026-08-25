@@ -66,6 +66,7 @@ def run_app():
 
     if not access_ip or not access_port:
         log("secrets.toml 에 AccessURLServerIP / AccessURLServerPort 가 설정되어 있지 않습니다.")
+        st.error("AccessURLServer 접속 실패", icon=":material/link_off:")
         st.stop()
 
     target_url = f"http://{access_ip}:{access_port}/get-app-link"
@@ -77,10 +78,14 @@ def run_app():
         data = response.json()
     except requests.exceptions.RequestException as exc:
         log(f"대상 서버 접속 실패: {exc}")
+        st.error("AccessURLServer 접속 실패", icon=":material/link_off:")
         st.stop()
     except ValueError:
         log("대상 서버 응답이 json 형식이 아닙니다.")
+        st.error("AccessURLServer 접속 실패", icon=":material/link_off:")
         st.stop()
+
+    st.success("AccessURLServer 접속 성공", icon=":material/link:")
 
     log("응답 결과 (json)")
     print(json.dumps(data, ensure_ascii=False, indent=2), flush=True)
