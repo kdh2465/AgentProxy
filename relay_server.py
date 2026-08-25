@@ -45,7 +45,7 @@ def get_local_ip():
 # Streamlit 앱 본문 (streamlit 런타임에서 실행될 때)
 # ---------------------------------------------------------------------------
 def run_app():
-    # 보안상 브라우저에는 아무 내용도 표시하지 않고,
+    # 보안상 브라우저에는 서비스 이름만 표시하고,
     # 조회된 내용은 터미널(콘솔)에만 출력한다.
     import json
     from datetime import datetime
@@ -56,7 +56,8 @@ def run_app():
 
     load_dotenv(ENV_FILE)
 
-    st.set_page_config(page_title="중계서버", page_icon=":material/hub:")
+    st.set_page_config(page_title="HYW RelayServer", page_icon=":material/hub:")
+    st.title("HYW RelayServer")
 
     def log(message):
         print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {message}", flush=True)
