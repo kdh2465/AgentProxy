@@ -1,22 +1,21 @@
 # -*- coding: utf-8 -*-
 """중계서버 (Relay server)
 
-요청이 들어오면 .env 의 AccessURLServerIP / AccessURLServerPort 서버에 접속해
+요청이 들어오면 secrets.toml 의 AccessURLServerIP / AccessURLServerPort 서버에 접속해
 json 정보를 읽어 요청한 곳으로 그대로 반환(표시)한다.
+(Streamlit Community Cloud 배포 시 앱 설정 > Secrets 에 두 키를 등록한다)
 
 실행:  python relay_server.py
   - streamlit ip / port 는 config.ini 에서 읽는다 (기본 port 8002)
 """
 
 import configparser
-import os
 import socket
 import sys
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = BASE_DIR / "config.ini"
-ENV_FILE = BASE_DIR / ".env"
 
 DEFAULT_IP = "0.0.0.0"
 DEFAULT_PORT = 8002
@@ -52,9 +51,6 @@ def run_app():
 
     import requests
     import streamlit as st
-    from dotenv import load_dotenv
-
-    load_dotenv(ENV_FILE)
 
     st.set_page_config(page_title="HYW RelayServer", page_icon=":material/hub:")
     st.title("HYW RelayServer")
@@ -62,11 +58,14 @@ def run_app():
     def log(message):
         print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {message}", flush=True)
 
-    access_ip = os.getenv("AccessURLServerIP", "").strip()
-    access_port = os.getenv("AccessURLServerPort", "").strip()
+    try:
+        access_ip = str(st.secrets.get("AccessURLServerIP", "")).strip()
+        access_port = str(st.secrets.get("AccessURLServerPort", "")).strip()
+    except FileNotFoundError:
+        access_ip = access_port = ""
 
     if not access_ip or not access_port:
-        log(".env 에 AccessURLServerIP / AccessURLServerPort 가 설정되어 있지 않습니다.")
+        log("secrets.toml 에 AccessURLServerIP / AccessURLServerPort 가 설정되어 있지 않습니다.")
         st.stop()
 
     target_url = f"http://{access_ip}:{access_port}/get-app-link"
