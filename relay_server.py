@@ -64,28 +64,31 @@ def run_app():
     except FileNotFoundError:
         access_ip = access_port = ""
 
+    # 접속 실패 시 반환할 기본(fallback) json
+    fallback_data = {
+        "access_url": "http://127.0.0.1:8000/access/access_url_server_connecting_fail"
+    }
+
+    data = None
     if not access_ip or not access_port:
         log("secrets.toml 에 AccessURLServerIP / AccessURLServerPort 가 설정되어 있지 않습니다.")
-        st.error("AccessURLServer 접속 실패", icon=":material/link_off:")
-        st.stop()
+    else:
+        target_url = f"http://{access_ip}:{access_port}/get-app-link"
+        log(f"요청 수신 -> 대상 서버 조회: {target_url}")
+        try:
+            response = requests.get(target_url, timeout=5)
+            response.raise_for_status()
+            data = response.json()
+        except requests.exceptions.RequestException as exc:
+            log(f"대상 서버 접속 실패: {exc}")
+        except ValueError:
+            log("대상 서버 응답이 json 형식이 아닙니다.")
 
-    target_url = f"http://{access_ip}:{access_port}/get-app-link"
-    log(f"요청 수신 -> 대상 서버 조회: {target_url}")
-
-    try:
-        response = requests.get(target_url, timeout=5)
-        response.raise_for_status()
-        data = response.json()
-    except requests.exceptions.RequestException as exc:
-        log(f"대상 서버 접속 실패: {exc}")
+    if data is not None:
+        st.success("AccessURLServer 접속 성공", icon=":material/link:")
+    else:
         st.error("AccessURLServer 접속 실패", icon=":material/link_off:")
-        st.stop()
-    except ValueError:
-        log("대상 서버 응답이 json 형식이 아닙니다.")
-        st.error("AccessURLServer 접속 실패", icon=":material/link_off:")
-        st.stop()
-
-    st.success("AccessURLServer 접속 성공", icon=":material/link:")
+        data = fallback_data
 
     log("응답 결과 (json)")
     print(json.dumps(data, ensure_ascii=False, indent=2), flush=True)

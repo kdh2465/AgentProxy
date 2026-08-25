@@ -27,3 +27,8 @@ Agent를 구성하여 이 링크에 접속 후 반환되는 값에서 url을 추
 [secret 키 위치 수정]
 1. streamlit community cloud를 통해 서비스 할 예정임. AccessURLServerIP, AccessURLServerPort 정보를 secrets.toml에서 읽어와 처리하도록 수정
 2. 접속시 화면에 AccessURLServer 접속 성공 / 실패 여부 출력
+
+
+2026-08-25 14:26:29
+[AccessURLServer]
+1. AccessURLServer에 접속에 실패하는 경우 {"access_url":"http://127.0.0.1:8000/access/access_url_server_connecting_fail"}의 json을 반환, 성공하는 경우 AccessURLServer에서 받아온 json을 반환
