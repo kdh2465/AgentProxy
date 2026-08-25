@@ -38,3 +38,6 @@ Agent를 구성하여 이 링크에 접속 후 반환되는 값에서 url을 추
 2. 다른 플랫폼의 에이전트를 통해 반환값을 읽어오라고 요청시 아래의 반환값 리턴
 {"success":false,"error":"invalid_path","message":"Path contains protocol, authority component, or traversal"}
 3. 이유와 해결책
+
+[README.md 작성]
+1. Network URL, JSON API URL의 각 기능을 포함하여 전반적인 동작 및 각 함수에 대한 가능한 자세하게 README.md 작성

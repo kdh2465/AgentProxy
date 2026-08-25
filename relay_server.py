@@ -62,7 +62,15 @@ app = st.App(
 )
 
 
-if __name__ == "__main__":
+def _runtime_exists():
+    # streamlit run(클라우드 포함)으로 실행되면 이미 런타임이 동작 중이므로
+    # app.run() 을 다시 호출하면 안 된다. python relay_server.py 직접 실행일 때만 호출한다.
+    from streamlit import runtime
+
+    return runtime.exists()
+
+
+if __name__ == "__main__" and not _runtime_exists():
     ip, port = load_streamlit_config()
     display_host = "localhost" if ip in ("", "0.0.0.0") else ip
 
