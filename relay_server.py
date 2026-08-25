@@ -1,18 +1,25 @@
 # -*- coding: utf-8 -*-
-"""중계서버 (Relay server)
+"""중계서버 (Relay server) 실행 진입점
 
-요청이 들어오면 secrets.toml 의 AccessURLServerIP / AccessURLServerPort 서버에 접속해
-json 정보를 읽어 요청한 곳으로 그대로 반환(표시)한다.
-(Streamlit Community Cloud 배포 시 앱 설정 > Secrets 에 두 키를 등록한다)
+- 브라우저 UI      : /                  (relay_app.py — 접속 성공/실패만 표시)
+- JSON API 엔드포인트: /api/get-app-link  (에이전트 등 외부 프로그램용, 순수 json 반환)
 
 실행:  python relay_server.py
   - streamlit ip / port 는 config.ini 에서 읽는다 (기본 port 8002)
+  - Streamlit Community Cloud 에서는 이 파일을 메인 파일로 지정하면
+    streamlit run 이 st.App 래퍼를 자동 인식하여 실행한다.
 """
 
 import configparser
 import socket
 import sys
 from pathlib import Path
+
+import streamlit as st
+from starlette.responses import JSONResponse
+from starlette.routing import Route
+
+from relay_core import fetch_relay_data
 
 BASE_DIR = Path(__file__).resolve().parent
 CONFIG_FILE = BASE_DIR / "config.ini"
@@ -40,64 +47,22 @@ def get_local_ip():
         return "127.0.0.1"
 
 
-# ---------------------------------------------------------------------------
-# Streamlit 앱 본문 (streamlit 런타임에서 실행될 때)
-# ---------------------------------------------------------------------------
-def run_app():
-    # 보안상 브라우저에는 서비스 이름만 표시하고,
-    # 조회된 내용은 터미널(콘솔)에만 출력한다.
-    import json
-    from datetime import datetime
+def get_app_link(request):
+    """JSON API: AccessURLServer 에서 읽어온 json 을 그대로 반환한다.
 
-    import requests
-    import streamlit as st
-
-    st.set_page_config(page_title="HYW RelayServer", page_icon=":material/hub:")
-    st.title("HYW RelayServer")
-
-    def log(message):
-        print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {message}", flush=True)
-
-    try:
-        access_ip = str(st.secrets.get("AccessURLServerIP", "")).strip()
-        access_port = str(st.secrets.get("AccessURLServerPort", "")).strip()
-    except FileNotFoundError:
-        access_ip = access_port = ""
-
-    # 접속 실패 시 반환할 기본(fallback) json
-    fallback_data = {
-        "access_url": "http://127.0.0.1:8000/access/access_url_server_connecting_fail"
-    }
-
-    data = None
-    if not access_ip or not access_port:
-        log("secrets.toml 에 AccessURLServerIP / AccessURLServerPort 가 설정되어 있지 않습니다.")
-    else:
-        target_url = f"http://{access_ip}:{access_port}/get-app-link"
-        log(f"요청 수신 -> 대상 서버 조회: {target_url}")
-        try:
-            response = requests.get(target_url, timeout=5)
-            response.raise_for_status()
-            data = response.json()
-        except requests.exceptions.RequestException as exc:
-            log(f"대상 서버 접속 실패: {exc}")
-        except ValueError:
-            log("대상 서버 응답이 json 형식이 아닙니다.")
-
-    if data is not None:
-        st.success("AccessURLServer 접속 성공", icon=":material/link:")
-    else:
-        st.error("AccessURLServer 접속 실패", icon=":material/link_off:")
-        data = fallback_data
-
-    log("응답 결과 (json)")
-    print(json.dumps(data, ensure_ascii=False, indent=2), flush=True)
+    접속 실패 시에도 HTTP 200 으로 fallback json 을 반환한다.
+    """
+    data, _success = fetch_relay_data()
+    return JSONResponse(data)
 
 
-# ---------------------------------------------------------------------------
-# 직접 실행 진입점: python relay_server.py
-# ---------------------------------------------------------------------------
-def main():
+app = st.App(
+    str(BASE_DIR / "relay_app.py"),
+    routes=[Route("/api/get-app-link", get_app_link)],
+)
+
+
+if __name__ == "__main__":
     ip, port = load_streamlit_config()
     display_host = "localhost" if ip in ("", "0.0.0.0") else ip
 
@@ -106,26 +71,16 @@ def main():
     print(f"  - Local URL   : http://{display_host}:{port}")
     if ip in ("", "0.0.0.0"):
         print(f"  - Network URL : http://{get_local_ip()}:{port}")
+    print(f"  - JSON API    : http://{display_host}:{port}/api/get-app-link")
     print("=" * 60, flush=True)
 
-    from streamlit.web import cli as stcli
-
-    sys.argv = [
-        "streamlit",
-        "run",
-        str(Path(__file__).resolve()),
-        f"--server.address={ip}",
-        f"--server.port={port}",
-        "--server.headless=true",
-        "--browser.gatherUsageStats=false",
-    ]
-    sys.exit(stcli.main())
-
-
-if __name__ == "__main__":
-    from streamlit import runtime
-
-    if runtime.exists():
-        run_app()
-    else:
-        main()
+    sys.exit(
+        app.run(
+            config={
+                "server.address": ip,
+                "server.port": port,
+                "server.headless": True,
+                "browser.gatherUsageStats": False,
+            }
+        )
+    )
