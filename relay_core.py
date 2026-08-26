@@ -20,6 +20,24 @@ def log(message):
     print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {message}", flush=True)
 
 
+def _read_access_server_secrets():
+    """secrets 에서 AccessURLServer(DynamicAccess) ip / port 를 읽는다."""
+    try:
+        access_ip = str(st.secrets.get("AccessURLServerIP", "")).strip()
+        access_port = str(st.secrets.get("AccessURLServerPort", "")).strip()
+    except FileNotFoundError:
+        access_ip = access_port = ""
+    return access_ip, access_port
+
+
+def get_target_url():
+    """DynamicAccess(AccessURLServer) 조회 URL. secrets 미설정 시 빈 문자열."""
+    access_ip, access_port = _read_access_server_secrets()
+    if not access_ip or not access_port:
+        return ""
+    return f"http://{access_ip}:{access_port}/get-app-link"
+
+
 def fetch_relay_data():
     """AccessURLServer 에서 json 을 읽어온다.
 
@@ -27,20 +45,15 @@ def fetch_relay_data():
       - 성공: (받아온 json, True)
       - 실패: (FALLBACK_DATA, False)  # 서버 미응답, json 형식 오류, secrets 미설정 포함
     """
-    try:
-        access_ip = str(st.secrets.get("AccessURLServerIP", "")).strip()
-        access_port = str(st.secrets.get("AccessURLServerPort", "")).strip()
-    except FileNotFoundError:
-        access_ip = access_port = ""
+    target_url = get_target_url()
 
-    if not access_ip or not access_port:
+    if not target_url:
         log("AccessURLServerIP / AccessURLServerPort 값이 없습니다.")
         log("`.streamlit/secrets.toml` 파일을 먼저 작성해 주세요. 예:")
         log('  AccessURLServerIP = "127.0.0.1"')
         log('  AccessURLServerPort = "8001"')
         return FALLBACK_DATA, False
 
-    target_url = f"http://{access_ip}:{access_port}/get-app-link"
     log(f"요청 수신 -> 대상 서버 조회: {target_url}")
 
     try:
