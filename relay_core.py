@@ -34,7 +34,10 @@ def fetch_relay_data():
         access_ip = access_port = ""
 
     if not access_ip or not access_port:
-        log("secrets.toml 에 AccessURLServerIP / AccessURLServerPort 가 설정되어 있지 않습니다.")
+        log("AccessURLServerIP / AccessURLServerPort 값이 없습니다.")
+        log("`.streamlit/secrets.toml` 파일을 먼저 작성해 주세요. 예:")
+        log('  AccessURLServerIP = "127.0.0.1"')
+        log('  AccessURLServerPort = "8001"')
         return FALLBACK_DATA, False
 
     target_url = f"http://{access_ip}:{access_port}/get-app-link"
