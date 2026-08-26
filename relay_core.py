@@ -5,10 +5,18 @@ secrets.toml 의 AccessURLServerIP / AccessURLServerPort 서버에 접속해
 json 을 읽어온다. UI(relay_app.py)와 API 라우트(relay_server.py)가 공용으로 사용한다.
 """
 
+import configparser
 from datetime import datetime
+from pathlib import Path
 
 import requests
 import streamlit as st
+
+BASE_DIR = Path(__file__).resolve().parent
+CONFIG_FILE = BASE_DIR / "config.ini"
+
+# DynamicAccess 조회 timeout 기본값 (초). config.ini [relay] timeout 으로 변경 가능.
+DEFAULT_TIMEOUT = 5
 
 # 접속 실패 시 반환할 기본(fallback) json
 FALLBACK_DATA = {
@@ -18,6 +26,21 @@ FALLBACK_DATA = {
 
 def log(message):
     print(f"[{datetime.now():%Y-%m-%d %H:%M:%S}] {message}", flush=True)
+
+
+def get_request_timeout():
+    """config.ini [relay] timeout (초). 없거나 잘못된 값이면 기본값 사용."""
+    config = configparser.ConfigParser()
+    config.read(CONFIG_FILE, encoding="utf-8")
+    try:
+        timeout = config.getfloat("relay", "timeout", fallback=DEFAULT_TIMEOUT)
+    except ValueError:
+        log(f"config.ini 의 [relay] timeout 값이 숫자가 아닙니다. 기본값 {DEFAULT_TIMEOUT}초 사용.")
+        return DEFAULT_TIMEOUT
+    if timeout <= 0:
+        log(f"config.ini 의 [relay] timeout 은 0보다 커야 합니다. 기본값 {DEFAULT_TIMEOUT}초 사용.")
+        return DEFAULT_TIMEOUT
+    return timeout
 
 
 def _read_access_server_secrets():
@@ -54,10 +77,11 @@ def fetch_relay_data():
         log('  AccessURLServerPort = "8001"')
         return FALLBACK_DATA, False
 
-    log(f"요청 수신 -> 대상 서버 조회: {target_url}")
+    timeout = get_request_timeout()
+    log(f"요청 수신 -> 대상 서버 조회: {target_url} (timeout {timeout:g}초)")
 
     try:
-        response = requests.get(target_url, timeout=5)
+        response = requests.get(target_url, timeout=timeout)
         response.raise_for_status()
         return response.json(), True
     except requests.exceptions.RequestException as exc:
